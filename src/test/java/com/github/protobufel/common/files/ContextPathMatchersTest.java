@@ -53,80 +53,87 @@ import java.util.Arrays;
 import static com.github.protobufel.common.files.ContextPathMatchers.getHierarchicalMatcher;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.isA;
+import static org.hamcrest.core.StringContains.containsString;
+import static org.hamcrest.core.StringStartsWith.startsWith;
 import static org.junit.Assume.assumeThat;
 
 @RunWith(Theories.class)
 public class ContextPathMatchersTest {
 
   @DataPoints("patterns")
-  public static final String[] SYNTAX_AND_PATTERNS = new String[] { 
-    "glob:part1/pa?rt2/*/**/last*part.*",
-    "regex:[^/]*/text.{1,5}[.]txt",
-    "bad:any:)how"
-  };
-  
+  public static final String[] SYNTAX_AND_PATTERNS =
+      new String[] {
+        "glob:part1/pa?rt2/*/**/last*part.*", "regex:[^/]*/text.{1,5}[.]txt", "bad:any:)how"
+      };
+
   @DataPoints("pathTypes")
-  public static final Class<?>[] PATH_TYPES = new Class<?>[] {
-    String.class, 
-    File.class, 
-    Path.class,
-    ArrayList.class // non-standard class with public default constructor, yet, should be okay! 
-    };
-  
+  public static final Class<?>[] PATH_TYPES =
+      new Class<?>[] {
+        String.class,
+        File.class,
+        Path.class,
+        ArrayList.class // non-standard class with public default constructor, yet, should be okay!
+      };
+
   @SuppressWarnings("null")
   @Rule
   public ExpectedException thrown = ExpectedException.none();
-  
+
   @Before
-  public void setUp() throws Exception {
-  }
+  public void setUp() throws Exception {}
 
   @After
-  public void tearDown() throws Exception {
-  }
+  public void tearDown() throws Exception {}
 
   @Theory
   public void getPathMatcherWithGoodDataIsOk(
       final @FromDataPoints("patterns") String syntaxAndPattern,
-      final boolean isUnix, final boolean allowDirs, boolean allowFiles, 
+      final boolean isUnix,
+      final boolean allowDirs,
+      boolean allowFiles,
       final Class<?> pathType) {
     //Given
     assumeThat((!allowDirs && !allowFiles), is(false));
     assumeThat(syntaxAndPattern, anyOf(startsWith("glob:"), startsWith("regex:")));
     assumeThat(Arrays.asList(String.class, File.class, Path.class).contains(pathType), is(true));
-    
-    getPathMatcherWithGoodDataIsGoodHelper(syntaxAndPattern, isUnix, allowDirs, allowFiles, 
-        pathType, true);
+
+    getPathMatcherWithGoodDataIsGoodHelper(
+        syntaxAndPattern, isUnix, allowDirs, allowFiles, pathType, true);
   }
-  
+
   @Theory
   public void getPathMatcherWithUnAssumedPathTypeIsOk(
       final @FromDataPoints("patterns") String syntaxAndPattern,
-      final boolean isUnix, final boolean allowDirs, boolean allowFiles, 
+      final boolean isUnix,
+      final boolean allowDirs,
+      boolean allowFiles,
       final Class<?> pathType) {
     //Given
     assumeThat((!allowDirs && !allowFiles), is(false));
     assumeThat(syntaxAndPattern, anyOf(startsWith("glob:"), startsWith("regex:")));
     assumeThat(Arrays.asList(String.class, File.class, Path.class).contains(pathType), is(false));
-    
-    getPathMatcherWithGoodDataIsGoodHelper(syntaxAndPattern, isUnix, allowDirs, allowFiles, 
-        pathType, false);
+
+    getPathMatcherWithGoodDataIsGoodHelper(
+        syntaxAndPattern, isUnix, allowDirs, allowFiles, pathType, false);
   }
 
   @Theory
   public void getPathMatcherWithBadSyntaxProhibited(
       final @FromDataPoints("patterns") String syntaxAndPattern,
-      final boolean isUnix, final boolean allowDirs, boolean allowFiles, 
+      final boolean isUnix,
+      final boolean allowDirs,
+      boolean allowFiles,
       final Class<?> pathType) {
     //Given
     assumeThat((!allowDirs && !allowFiles), is(false));
     assumeThat(syntaxAndPattern, is(not(anyOf(startsWith("glob:"), startsWith("regex:")))));
     assumeThat(Arrays.asList(String.class, File.class, Path.class).contains(pathType), is(true));
-    
+
     //Then
     thrown.expect(isA(UnsupportedOperationException.class));
     thrown.expectMessage(containsString(syntaxAndPattern.split(":", 2)[0]));
-    
+
     //When
     getHierarchicalMatcher(syntaxAndPattern, isUnix, allowDirs, allowFiles, pathType);
   }
@@ -134,45 +141,52 @@ public class ContextPathMatchersTest {
   @Theory
   public void getPathMatcherWithAllowDirsAndAllowFilesBothFalseProhibited(
       final @FromDataPoints("patterns") String syntaxAndPattern,
-      final boolean isUnix, final boolean allowDirs, boolean allowFiles, 
+      final boolean isUnix,
+      final boolean allowDirs,
+      boolean allowFiles,
       final Class<?> pathType) {
     //Given
     assumeThat((!allowDirs && !allowFiles), is(true));
     assumeThat(syntaxAndPattern, is(anyOf(startsWith("glob:"), startsWith("regex:"))));
     assumeThat(Arrays.asList(String.class, File.class, Path.class).contains(pathType), is(true));
-    
+
     //Then
     thrown.expect(isA(IllegalArgumentException.class));
     thrown.expectMessage(containsString("allowDirs and allowFiles cannot be both false"));
-    
+
     //When
     getHierarchicalMatcher(syntaxAndPattern, isUnix, allowDirs, allowFiles, pathType);
   }
 
   private <T> void getPathMatcherWithGoodDataIsGoodHelper(
       final String syntaxAndPattern,
-      final boolean isUnix, final boolean allowDirs, boolean allowFiles, 
-      final Class<T> pathType, final boolean isAssumedPathType) {
+      final boolean isUnix,
+      final boolean allowDirs,
+      boolean allowFiles,
+      final Class<T> pathType,
+      final boolean isAssumedPathType) {
     //When
-    final HierarchicalMatcher<T> actualMatcher = getHierarchicalMatcher(syntaxAndPattern, isUnix, 
-        allowDirs, allowFiles, pathType);
-    
+    final HierarchicalMatcher<T> actualMatcher =
+        getHierarchicalMatcher(syntaxAndPattern, isUnix, allowDirs, allowFiles, pathType);
+
     //Then
     assertThat(actualMatcher, is(not(nullValue())));
     assertThat(actualMatcher.isAllowDirs(), is(allowDirs));
     assertThat(actualMatcher.isAllowFiles(), is(allowFiles));
     assertThat(actualMatcher.isEmpty(), is(false));
-    
+
     assertThat(actualMatcher.toString(), is(not(nullValue())));
-    assertThat(actualMatcher.toString(), allOf(
-        containsString(actualMatcher.getPattern()), 
-        containsString("allowDirs"),
-        containsString("allowFiles"),
-        containsString("flags")));
-    
+    assertThat(
+        actualMatcher.toString(),
+        allOf(
+            containsString(actualMatcher.getPattern()),
+            containsString("allowDirs"),
+            containsString("allowFiles"),
+            containsString("flags")));
+
     assertThat(actualMatcher.getPattern(), is(not(nullValue())));
     final String patternNoSyntax = syntaxAndPattern.split(":", 2)[1];
-    
+
     if (syntaxAndPattern.startsWith("regex:")) {
       if (isUnix) {
         assertThat(actualMatcher.getPattern(), is(equalTo(patternNoSyntax)));
@@ -180,10 +194,12 @@ public class ContextPathMatchersTest {
         assertThat(actualMatcher.getPattern(), is(not(equalTo(patternNoSyntax))));
       }
     }
-    
+
     // all ContextHierarchicalMatcher's methods should not produce exceptions!
-    actualMatcher.matches(getValidInstanceOf(pathType, isAssumedPathType), PathContexts.<T>emptyPathContext());
-    actualMatcher.matchesDirectory(getValidInstanceOf(pathType, isAssumedPathType), PathContexts.<T>emptyPathContext());
+    actualMatcher.matches(
+        getValidInstanceOf(pathType, isAssumedPathType), PathContexts.<T>emptyPathContext());
+    actualMatcher.matchesDirectory(
+        getValidInstanceOf(pathType, isAssumedPathType), PathContexts.<T>emptyPathContext());
   }
 
   @SuppressWarnings("null")

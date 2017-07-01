@@ -32,8 +32,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 public class Utils {
-  private Utils() {
-  }
+  private Utils() {}
 
   @SuppressWarnings("null")
   public static Path getCanonicalPath(final Path path) {

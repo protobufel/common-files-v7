@@ -34,7 +34,6 @@
 package com.github.protobufel.common.files;
 
 import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 
 import java.util.AbstractMap.SimpleImmutableEntry;
@@ -44,14 +43,20 @@ import java.util.Map.Entry;
 import static com.github.protobufel.common.verifications.Verifications.*;
 
 class HistoryCaches {
-  private HistoryCaches() {
+  private HistoryCaches() {}
+
+  public static <K, V> IHistoryCache<K, V> fakeInstance() {
+    return new FakeHistoryCache<K, V>();
+  }
+
+  public static <K, V> IHistoryCache<K, V> fakeInstance(final int initialSize) {
+    return new FakeHistoryCache<K, V>(initialSize);
   }
 
   private static final class FakeHistoryCache<K, V> implements IHistoryCache<K, V> {
     private volatile int size;
-    
-    FakeHistoryCache() {
-    }
+
+    FakeHistoryCache() {}
 
     FakeHistoryCache(final int initialSize) {
       this.size = initialSize;
@@ -104,45 +109,39 @@ class HistoryCaches {
       return size;
     }
   }
-  
-  public static <K, V> IHistoryCache<K, V> fakeInstance() {
-    return new FakeHistoryCache<K, V>();
-  }
-  
-  public static <K, V> IHistoryCache<K, V> fakeInstance(final int initialSize) {
-    return new FakeHistoryCache<K, V>(initialSize);
-  } 
-  
+
   static class HistoryCache<K, V> implements IHistoryCache<K, V> {
     private static final HistoryCache<?, ?> EMPTY = new HistoryCache<Object, Object>();
     private final Deque<Map<K, V>> history;
+    private final IHistoryCacheView<K, V> cacheView;
     private int maxSize;
     private Map<K, V> prevCache;
-    private final IHistoryCacheView<K, V> cacheView;
 
     private HistoryCache() {
       // virtually unmodifiable; ideally would be Collections.umodifiableDeque()!
       this.history = new LinkedList<>();
       this.maxSize = 0;
       @SuppressWarnings("null")
-      @NonNull Map<K, V> emptyMap = Collections.emptyMap();
+      @NonNull
+      Map<K, V> emptyMap = Collections.emptyMap();
       this.prevCache = emptyMap;
-      this.cacheView = new IHistoryCacheView<K, V>() {
-        @Override
-        public boolean setCachedValue(K key, V value) {
-          return false;
-        }
+      this.cacheView =
+          new IHistoryCacheView<K, V>() {
+            @Override
+            public boolean setCachedValue(K key, V value) {
+              return false;
+            }
 
-        @Override
-        public @Nullable V getCachedValue(K key) {
-          return null;
-        }
+            @Override
+            public @Nullable V getCachedValue(K key) {
+              return null;
+            }
 
-        @Override
-        public int currentDepth() {
-          return -1;
-        }
-      };
+            @Override
+            public int currentDepth() {
+              return -1;
+            }
+          };
     }
 
     public HistoryCache(int maxSize) {
@@ -152,24 +151,26 @@ class HistoryCaches {
       this.history = new LinkedList<>();
       this.history.add(new IdentityHashMap<K, V>());
       @SuppressWarnings("null")
-      @NonNull Map<K, V> emptyMap = Collections.emptyMap();
+      @NonNull
+      Map<K, V> emptyMap = Collections.emptyMap();
       this.prevCache = emptyMap;
-      this.cacheView = new IHistoryCacheView<K, V>() {
-        @Override
-        public boolean setCachedValue(K key, V value) {
-          return HistoryCache.this.setValue(key, value);
-        }
+      this.cacheView =
+          new IHistoryCacheView<K, V>() {
+            @Override
+            public boolean setCachedValue(K key, V value) {
+              return HistoryCache.this.setValue(key, value);
+            }
 
-        @Override
-        public @Nullable V getCachedValue(K key) {
-          return HistoryCache.this.getValue(key);
-        }
+            @Override
+            public @Nullable V getCachedValue(K key) {
+              return HistoryCache.this.getValue(key);
+            }
 
-        @Override
-        public int currentDepth() {
-          return HistoryCache.this.size();
-        }
-      };
+            @Override
+            public int currentDepth() {
+              return HistoryCache.this.size();
+            }
+          };
     }
 
     @SuppressWarnings("unchecked")
@@ -190,7 +191,7 @@ class HistoryCaches {
 
       return history.size();
     }
-    
+
     private boolean setValue(final K key, final V value) {
       Objects.requireNonNull(key);
       Objects.requireNonNull(value);
@@ -227,7 +228,8 @@ class HistoryCaches {
       }
 
       @SuppressWarnings("null")
-      @NonNull Map<K, V> emptyMap = Collections.emptyMap();
+      @NonNull
+      Map<K, V> emptyMap = Collections.emptyMap();
       prevCache = emptyMap;
     }
 
@@ -257,7 +259,7 @@ class HistoryCaches {
       for (int i = 0; i < size; i++) {
         history.removeFirst();
       }
-      
+
       @SuppressWarnings("null")
       final @NonNull Map<K, V> removeFirst = history.removeFirst();
       prevCache = removeFirst;
@@ -282,9 +284,10 @@ class HistoryCaches {
       history.addFirst(new IdentityHashMap<K, V>());
     }
   }
-  
+
   static class SimpleEntryHistoryCache<K, V> {
-    protected static final SimpleEntryHistoryCache<?, ?> EMPTY = new SimpleEntryHistoryCache<Object, Object>();
+    protected static final SimpleEntryHistoryCache<?, ?> EMPTY =
+        new SimpleEntryHistoryCache<Object, Object>();
     private final Deque<Entry<K, V>> history;
     private int maxSize;
 
@@ -298,7 +301,7 @@ class HistoryCaches {
       this.maxSize = verifyArgument(maxSize > 0, maxSize);
       this.history = new LinkedList<>();
     }
-    
+
     @SuppressWarnings("unchecked")
     public static <K, V> SimpleEntryHistoryCache<K, V> emptyCache() {
       return (SimpleEntryHistoryCache<K, V>) EMPTY;
@@ -327,7 +330,6 @@ class HistoryCaches {
       history.clear();
     }
 
-    
     public @Nullable Entry<K, V> peek() {
       if (this == EMPTY) {
         return null;
@@ -336,7 +338,6 @@ class HistoryCaches {
       return history.peekFirst();
     }
 
-    
     public void pop() {
       if (this == EMPTY) {
         return;
@@ -360,10 +361,10 @@ class HistoryCaches {
 
       history.removeFirst();
     }
-    
+
     public void adjustCache(final int historySize) {
-      verifyCondition((historySize - history.size() <= 1),
-          "historySize cannot exceed cache size by 1");
+      verifyCondition(
+          (historySize - history.size() <= 1), "historySize cannot exceed cache size by 1");
 
       if (historySize < history.size()) {
         pop(historySize);
@@ -374,7 +375,7 @@ class HistoryCaches {
       return history.isEmpty();
     }
   }
-  
+
   static class SimpleHistoryCache<T> {
     protected static final SimpleHistoryCache<?> EMPTY = new SimpleHistoryCache<Object>();
     private final Deque<PositionValue<T>> history;
@@ -393,7 +394,7 @@ class HistoryCaches {
       this.history = new LinkedList<>();
       this.currentPos = -1;
     }
-    
+
     @SuppressWarnings("unchecked")
     public static <T> SimpleHistoryCache<T> emptyCache() {
       return (SimpleHistoryCache<T>) EMPTY;
@@ -403,7 +404,7 @@ class HistoryCaches {
       if (this == EMPTY) {
         return;
       }
-      
+
       verifyCondition(currentPos != -1, "call adjustCache before calling push");
 
       if ((maxSize > 1) && (history.size() == maxSize)) {
@@ -422,7 +423,6 @@ class HistoryCaches {
       currentPos = -1;
     }
 
-    
     public @Nullable T peek() {
       if ((this == EMPTY) || history.isEmpty()) {
         return null;
@@ -431,7 +431,6 @@ class HistoryCaches {
       return history.peekFirst().getValue();
     }
 
-    
     public @Nullable T pop() {
       if ((this == EMPTY) || history.isEmpty()) {
         return null;
@@ -443,29 +442,29 @@ class HistoryCaches {
     public @Nullable T pop(final int historySize) {
       verifyCondition(historySize > 0, "historySize must be positive");
       currentPos = -1;
-      final int historyDepth = getHistoryDepth(); 
-      
+      final int historyDepth = getHistoryDepth();
+
       if ((this == EMPTY) || history.isEmpty() || (historyDepth <= historySize)) {
         return null;
       }
 
       PositionValue<T> element = history.removeFirst();
-      
+
       while (!history.isEmpty() && (element.getPosition() > historySize)) {
         element = history.removeFirst();
       }
-      
+
       return element.getValue();
     }
-    
+
     public void adjustCache(final int historySize) {
       if (historySize < history.size()) {
         pop(historySize);
       }
-      
+
       currentPos = historySize;
     }
-    
+
     public int getHistoryDepth() {
       return history.isEmpty() ? 0 : history.peekFirst().getPosition();
     }
@@ -474,11 +473,11 @@ class HistoryCaches {
       return history.isEmpty();
     }
   }
-  
+
   private static final class PositionValue<T> {
     private final int position;
     private final T value;
-    
+
     public PositionValue(int position, T value) {
       this.position = position;
       this.value = value;
@@ -501,7 +500,6 @@ class HistoryCaches {
       return result;
     }
 
-    @NonNullByDefault(false)
     @Override
     public boolean equals(Object obj) {
       if (this == obj) {
@@ -526,10 +524,15 @@ class HistoryCaches {
     @Override
     public String toString() {
       StringBuilder builder = new StringBuilder();
-      builder.append("PositionValue [position=").append(position).append(", value=").append(value)
+      builder
+          .append("PositionValue [position=")
+          .append(position)
+          .append(", value=")
+          .append(value)
           .append("]");
       @SuppressWarnings("null")
-      @NonNull String string = builder.toString();
+      @NonNull
+      String string = builder.toString();
       return string;
     }
   }

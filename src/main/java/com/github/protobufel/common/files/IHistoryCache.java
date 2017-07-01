@@ -35,9 +35,14 @@ package com.github.protobufel.common.files;
 
 interface IHistoryCache<K, V> {
   public void clear();
+
   public void pop();
+
   public void pop(int historySize);
+
   public void push();
+
   public IHistoryCacheView<K, V> getCacheView();
+
   public int size();
 }

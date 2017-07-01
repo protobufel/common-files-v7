@@ -49,12 +49,10 @@ import static org.junit.Assert.fail;
 public class SimpleHierarchicalMatcherTest {
 
   @Before
-  public void setUp() throws Exception {
-  }
+  public void setUp() throws Exception {}
 
   @After
-  public void tearDown() throws Exception {
-  }
+  public void tearDown() throws Exception {}
 
   @Test
   public void testEqualsContract() throws Exception {
@@ -98,7 +96,7 @@ public class SimpleHierarchicalMatcherTest {
   public void testConvertNormalizedRelativeRegexToWindows() {
     fail("Not yet implemented");
   }
-  
+
   @Ignore
   @Test
   public void testGetPattern() {

@@ -40,13 +40,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static com.github.protobufel.common.verifications.Verifications.*;
 import static com.github.protobufel.common.verifications.Verifications.assertNonNull;
 
 @NonNullByDefault
 public class Resources {
   private Resources() {}
-  
+
   private interface ISharedFileSet {
 
     public String getDirectory();
@@ -59,10 +58,9 @@ public class Resources {
 
     public boolean isAllowFiles();
   }
-  
-  public interface IFileSet extends ISharedFileSet {
-  }
-  
+
+  public interface IFileSet extends ISharedFileSet {}
+
   public static final class FileSet implements IFileSet {
     //TODO make it Serializable
     private final String directory;
@@ -74,16 +72,34 @@ public class Resources {
     public FileSet(final IFileSet other) {
       this(other.getDirectory(), other.getIncludes(), other.getExcludes(), false, true);
     }
-    
-    public FileSet(final String directory, final List<String> includes, 
-        final List<String> excludes, final boolean allowDirs, final boolean allowFiles) {
+
+    public FileSet(
+        final String directory,
+        final List<String> includes,
+        final List<String> excludes,
+        final boolean allowDirs,
+        final boolean allowFiles) {
       this.directory = directory;
-      this.includes = assertNonNull(includes.isEmpty() ? Collections.<String>emptyList() : 
-        Collections.unmodifiableList(new ArrayList<String>(includes)));
-      this.excludes = assertNonNull(excludes.isEmpty() ? Collections.<String>emptyList() : 
-        Collections.unmodifiableList(new ArrayList<String>(excludes)));
+      this.includes =
+          assertNonNull(
+              includes.isEmpty()
+                  ? Collections.<String>emptyList()
+                  : Collections.unmodifiableList(new ArrayList<String>(includes)));
+      this.excludes =
+          assertNonNull(
+              excludes.isEmpty()
+                  ? Collections.<String>emptyList()
+                  : Collections.unmodifiableList(new ArrayList<String>(excludes)));
       this.allowDirs = allowDirs;
       this.allowFiles = allowFiles;
+    }
+
+    public static Builder builder() {
+      return new Builder();
+    }
+
+    public static Builder builder(final IFileSet other) {
+      return new Builder(other);
     }
 
     @Override
@@ -110,7 +126,7 @@ public class Resources {
     public boolean isAllowFiles() {
       return allowFiles;
     }
-    
+
     @Override
     public int hashCode() {
       final int prime = 31;
@@ -152,21 +168,22 @@ public class Resources {
       }
       return true;
     }
-    
+
     @Override
     public String toString() {
-      return "FileSet [directory=" + directory + ", includes=" + includes + ", excludes="
-          + excludes + ", allowDirs=" + allowDirs + ", allowFiles=" + allowFiles + "]";
+      return "FileSet [directory="
+          + directory
+          + ", includes="
+          + includes
+          + ", excludes="
+          + excludes
+          + ", allowDirs="
+          + allowDirs
+          + ", allowFiles="
+          + allowFiles
+          + "]";
     }
 
-    public static Builder builder() {
-      return new Builder();
-    }
-
-    public static Builder builder(final IFileSet other) {
-      return new Builder(other);
-    }
-    
     public static final class Builder implements ISharedFileSet {
       private String directory;
       private List<String> includes;
@@ -176,19 +193,27 @@ public class Resources {
 
       public Builder() {
         directory = "";
-        includes = new ArrayList<String>(); 
+        includes = new ArrayList<String>();
         excludes = new ArrayList<String>();
         allowDirs = false;
         allowFiles = true;
       }
 
       public Builder(final ISharedFileSet other) {
-        this(other.getDirectory(), other.getIncludes(), other.getExcludes(), other.isAllowDirs(), 
+        this(
+            other.getDirectory(),
+            other.getIncludes(),
+            other.getExcludes(),
+            other.isAllowDirs(),
             other.isAllowFiles());
       }
 
-      private Builder(final String directory, final List<String> includes, 
-          final List<String> excludes, final boolean allowDirs, final boolean allowFiles) {
+      private Builder(
+          final String directory,
+          final List<String> includes,
+          final List<String> excludes,
+          final boolean allowDirs,
+          final boolean allowFiles) {
         this.directory = directory;
         this.includes = new ArrayList<String>(includes);
         this.excludes = new ArrayList<String>(excludes);
@@ -199,7 +224,7 @@ public class Resources {
       public String getDirectory() {
         return directory;
       }
-      
+
       public boolean isAllowDirs() {
         return allowDirs;
       }
@@ -222,49 +247,49 @@ public class Resources {
         this.directory = directory;
         return this;
       }
-      
+
       @SuppressWarnings("null")
       public List<String> getIncludes() {
         return Collections.unmodifiableList(includes);
       }
-      
+
       @SuppressWarnings("null")
       public List<String> getExcludes() {
         return Collections.unmodifiableList(excludes);
       }
-      
+
       public Builder addIncludes(String... includes) {
         Collections.addAll(this.includes, includes);
         return this;
       }
-      
+
       public Builder addExcludes(String... excludes) {
         Collections.addAll(this.excludes, excludes);
         return this;
       }
-      
+
       public Builder clearIncludes() {
         includes.clear();
         return this;
       }
-      
+
       public Builder clearExcludes() {
         excludes.clear();
         return this;
       }
-      
+
       public Builder clearDir() {
         directory = "";
         return this;
       }
-      
+
       public Builder reset() {
         clearDir();
         clearIncludes();
         clearExcludes();
         return this;
       }
-      
+
       public IFileSet build() {
         return new FileSet(directory, includes, excludes, allowDirs, allowFiles);
       }

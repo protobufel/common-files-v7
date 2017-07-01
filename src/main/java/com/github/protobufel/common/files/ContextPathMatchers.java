@@ -35,7 +35,6 @@ package com.github.protobufel.common.files;
 
 import com.github.protobufel.common.files.PathContexts.PathContext;
 import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 
 import java.util.regex.Matcher;
@@ -46,43 +45,54 @@ import static com.github.protobufel.common.verifications.Verifications.*;
 public final class ContextPathMatchers {
   private ContextPathMatchers() {}
 
+  public static <T> HierarchicalMatcher<T> getHierarchicalMatcher(
+      final String syntaxAndPattern,
+      final boolean isUnix,
+      final boolean allowDirs,
+      final boolean allowFiles,
+      final Class<? extends T> pathType) {
+    final String[] parts = verifyNonNull(syntaxAndPattern).split(":", 2);
+    final @NonNull String regex = verifyArgument(parts.length == 2, parts[1]);
+
+    if (parts[0].equals("regex")) {
+      return new SimpleHierarchicalMatcher<T>(isUnix, regex, allowDirs, allowFiles);
+    } else if (parts[0].equals("glob")) {
+      return new SimpleHierarchicalMatcher<T>(regex, isUnix, allowDirs, allowFiles);
+    } else {
+      throw new UnsupportedOperationException(String.format("%s syntax", parts[0]));
+    }
+  }
+
   interface HierarchicalMatcherCommon {
     boolean isEmpty();
+
     boolean isAllowDirs();
+
     boolean isAllowFiles();
+
     String getPattern();
   }
-  
+
   public interface ContextHierarchicalMatcher<T> extends HierarchicalMatcherCommon {
     boolean matches(T path, PathContext<T> pathContext);
+
     DirectoryMatchResult matchesDirectory(T path, PathContext<T> pathContext);
   }
 
   public interface BasicHierarchicalMatcher<T> extends HierarchicalMatcherCommon {
     boolean matchesResolved(@Nullable String path, PathContext<T> pathContext);
-    DirectoryMatchResult matchesResolvedDirectory(@Nullable String path, @Nullable String separator,
-                                                  PathContext<T> pathContext);
+
+    DirectoryMatchResult matchesResolvedDirectory(
+        @Nullable String path, @Nullable String separator, PathContext<T> pathContext);
   }
 
-  public interface HierarchicalMatcher<T> extends ContextHierarchicalMatcher<T>, BasicHierarchicalMatcher<T> {
-  }
-  
-  public static <T> HierarchicalMatcher<T> getHierarchicalMatcher(final String syntaxAndPattern, 
-      final boolean isUnix, final boolean allowDirs, final boolean allowFiles, 
-      final Class<? extends T> pathType) {
-    final String[] parts = verifyNonNull(syntaxAndPattern).split(":", 2);
-    final @NonNull String regex = verifyArgument(parts.length == 2, parts[1]);
-    
-    if (parts[0].equals("regex")) {
-      return new SimpleHierarchicalMatcher<T>(isUnix, regex, allowDirs, allowFiles);
-    } else if (parts[0].equals("glob")) {
-      return new SimpleHierarchicalMatcher<T>(regex , isUnix, allowDirs, allowFiles);
-    } else {
-      throw new UnsupportedOperationException(String.format("%s syntax", parts[0]));
-    }
-  }
-  
+  public interface HierarchicalMatcher<T>
+      extends ContextHierarchicalMatcher<T>, BasicHierarchicalMatcher<T> {}
+
   public static final class SimpleHierarchicalMatcher<T> implements HierarchicalMatcher<T> {
+    @SuppressWarnings("null")
+    private static final Pattern UNIX_TO_WINDOWS_SLASH_FIND_REGEX =
+        Pattern.compile("/|(?:(\\\\*+)(?:(\\[)|(\\])|(Q)|(E)))");
     private final Pattern pattern;
     private final boolean allowDirs;
     private final boolean allowFiles;
@@ -95,28 +105,47 @@ public final class ContextPathMatchers {
       this.isUnix = other.isUnix;
     }
 
-    public SimpleHierarchicalMatcher(final String glob, final boolean isUnix, final boolean allowDirs, 
+    public SimpleHierarchicalMatcher(
+        final String glob,
+        final boolean isUnix,
+        final boolean allowDirs,
         final boolean allowFiles) {
       this(isUnix, convertGlobToRegex(glob, isUnix), true, allowDirs, allowFiles);
     }
 
-    public SimpleHierarchicalMatcher(final boolean isUnix, final String regex, 
-        final boolean allowDirs, final boolean allowFiles) {
+    public SimpleHierarchicalMatcher(
+        final boolean isUnix,
+        final String regex,
+        final boolean allowDirs,
+        final boolean allowFiles) {
       this(isUnix, regex, false, allowDirs, allowFiles);
     }
 
-    public SimpleHierarchicalMatcher(final boolean isUnix, final String regex, 
-        final boolean isRegexSystemSpecific, final boolean allowDirs, final boolean allowFiles) {
+    public SimpleHierarchicalMatcher(
+        final boolean isUnix,
+        final String regex,
+        final boolean isRegexSystemSpecific,
+        final boolean allowDirs,
+        final boolean allowFiles) {
       verifyCondition((allowDirs || allowFiles), "allowDirs and allowFiles cannot be both false");
       this.allowDirs = allowDirs;
       this.allowFiles = allowFiles;
       final String regexFlags = isUnix ? "" : "(?iu)";
-      final String fsRegex = isRegexSystemSpecific ? regex 
-          : convertRegexToSystemSpecific(regex, isUnix);
+      final String fsRegex =
+          isRegexSystemSpecific ? regex : convertRegexToSystemSpecific(regex, isUnix);
       @SuppressWarnings("null")
-      @NonNull Pattern compiled = Pattern.compile(regexFlags + verifyNonNull(fsRegex));
+      @NonNull
+      Pattern compiled = Pattern.compile(regexFlags + verifyNonNull(fsRegex));
       this.pattern = compiled;
       this.isUnix = isUnix;
+    }
+
+    protected static final String convertGlobToRegex(final String glob, final boolean isUnix) {
+      if (isUnix) {
+        return Globs.toUnixRegexPattern(glob);
+      } else {
+        return Globs.toWindowsRegexPattern(glob);
+      }
     }
 
     @SuppressWarnings("null")
@@ -124,13 +153,22 @@ public final class ContextPathMatchers {
     public String getPattern() {
       return pattern.pattern();
     }
-    
+
     @Override
     public String toString() {
-      return "SimpleHierarchicalMatcher [pattern=" + pattern + ", flags=" + pattern.flags() 
-          + ", allowDirs=" + allowDirs + ", allowFiles=" + allowFiles + ", isUnix=" + isUnix + "]";
+      return "SimpleHierarchicalMatcher [pattern="
+          + pattern
+          + ", flags="
+          + pattern.flags()
+          + ", allowDirs="
+          + allowDirs
+          + ", allowFiles="
+          + allowFiles
+          + ", isUnix="
+          + isUnix
+          + "]";
     }
-    
+
     @Override
     public int hashCode() {
       final int prime = 31;
@@ -143,7 +181,6 @@ public final class ContextPathMatchers {
     }
 
     @Override
-    @NonNullByDefault(false)
     public boolean equals(Object obj) {
       if (this == obj) {
         return true;
@@ -190,8 +227,8 @@ public final class ContextPathMatchers {
 
     @Override
     public DirectoryMatchResult matchesDirectory(final T path, final PathContext<T> pathContext) {
-      return matchesResolvedDirectory(pathContext.resolvePath(path), 
-          pathContext.getSeparator(path), pathContext);
+      return matchesResolvedDirectory(
+          pathContext.resolvePath(path), pathContext.getSeparator(path), pathContext);
     }
 
     @Override
@@ -200,16 +237,18 @@ public final class ContextPathMatchers {
     }
 
     @Override
-    public DirectoryMatchResult matchesResolvedDirectory(final @Nullable String path,
-                                                         final @Nullable String separator, final PathContext<T> pathContext) {
+    public DirectoryMatchResult matchesResolvedDirectory(
+        final @Nullable String path,
+        final @Nullable String separator,
+        final PathContext<T> pathContext) {
       if ((path == null) || (separator == null)) {
         return DirectoryMatchResult.NO_MATCH;
       }
-      
+
       final String pathWithSlash = path + separator;
       final Matcher matcher;
       final boolean isMatched;
-      
+
       if (allowDirs) {
         matcher = pattern.matcher(path);
         isMatched = matcher.matches();
@@ -218,37 +257,25 @@ public final class ContextPathMatchers {
         matcher = pattern.matcher(pathWithSlash);
         isMatched = false;
       }
-      
+
       final boolean skip = matcher.matches() ? matcher.requireEnd() : (!matcher.hitEnd());
       return DirectoryMatchResult.valueOf(isMatched, skip);
     }
-    
-    protected final static String convertGlobToRegex(final String glob, final boolean isUnix) {
-      if (isUnix) {
-        return Globs.toUnixRegexPattern(glob);
-      } else {
-        return Globs.toWindowsRegexPattern(glob);
-      }
-    }
-    
-    protected final String convertRegexToSystemSpecific(final String normalizedRelativeRegex, 
-        final boolean isUnix) {
+
+    protected final String convertRegexToSystemSpecific(
+        final String normalizedRelativeRegex, final boolean isUnix) {
       if (isUnix) {
         return normalizedRelativeRegex;
       } else {
         return convertNormalizedRelativeRegexToWindows(normalizedRelativeRegex);
       }
     }
-    
-    @SuppressWarnings("null")
-    private static final Pattern UNIX_TO_WINDOWS_SLASH_FIND_REGEX = Pattern
-        .compile("/|(?:(\\\\*+)(?:(\\[)|(\\])|(Q)|(E)))");
-    
+
     protected final String convertNormalizedRelativeRegexToWindows(
         final String normalizedRelativeRegex) {
       @SuppressWarnings("null")
-      final @NonNull Matcher matcher = UNIX_TO_WINDOWS_SLASH_FIND_REGEX.matcher(
-          normalizedRelativeRegex);
+      final @NonNull Matcher matcher =
+          UNIX_TO_WINDOWS_SLASH_FIND_REGEX.matcher(normalizedRelativeRegex);
       final StringBuffer sb = new StringBuffer();
       boolean foundCharGroup = false;
       boolean foundQuote = false;

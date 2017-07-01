@@ -38,7 +38,6 @@ import com.github.protobufel.common.files.ContextPathMatchers.HierarchicalMatche
 import com.github.protobufel.common.files.HistoryCaches.SimpleHistoryCache;
 import com.github.protobufel.common.files.PathContexts.PathContext;
 import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 
 import java.io.File;
@@ -49,12 +48,11 @@ import static com.github.protobufel.common.files.Utils.isUnix;
 import static com.github.protobufel.common.verifications.Verifications.*;
 
 public final class ContextResourcePathMatchers {
-  private ContextResourcePathMatchers() {
-  }
-  
+  private ContextResourcePathMatchers() {}
+
   public static class CompositePathMatcher<T, E extends ContextHierarchicalMatcher<T>>
       implements ContextHierarchicalMatcher<T> {
-    private static final CompositePathMatcher<?, ?> EMPTY = 
+    private static final CompositePathMatcher<?, ?> EMPTY =
         new CompositePathMatcher<Object, ContextHierarchicalMatcher<Object>>();
     private final List<E> matchers;
     private final boolean allowDirs;
@@ -122,13 +120,13 @@ public final class ContextResourcePathMatchers {
       if (matchers.isEmpty()) {
         return "[]";
       }
-      
+
       final StringBuilder sb = new StringBuilder("[");
-      
+
       for (E matcher : matchers) {
         sb.append(matcher.getPattern()).append(",");
       }
-      
+
       sb.setCharAt(sb.length() - 1, ']');
       @SuppressWarnings("null")
       final @NonNull String result = sb.toString();
@@ -143,7 +141,7 @@ public final class ContextResourcePathMatchers {
 
       cache.adjustCache(context.currentDepth());
       final IterableFilter cacheData = getCacheData();
-      
+
       for (int index : cacheData) {
         if (matchers.get(index).matches(path, context)) {
           return true;
@@ -161,42 +159,42 @@ public final class ContextResourcePathMatchers {
 
       cache.adjustCache(context.currentDepth());
       final IterableFilter cacheData = getCacheData();
-      
+
       if (cacheData.isEmpty()) {
         return DirectoryMatchResult.NO_MATCH;
       }
-      
+
       final IterableFilter.Builder cacheBuilder = cacheData.toBuilder();
       boolean skip = true;
       boolean matched = false;
-      
+
       for (int index : cacheData) {
-        final DirectoryMatchResult matchResult = matchers.get(index)
-            .matchesDirectory(path, context);
-        
+        final DirectoryMatchResult matchResult =
+            matchers.get(index).matchesDirectory(path, context);
+
         if (matchResult.isMatched()) {
           matched = true;
-          
+
           if (!matchResult.isSkip()) {
             // MATCH_CONTINUE
             skip = false;
             break;
           }
-          
+
           cacheBuilder.clear(index);
-          
+
           if (!skip) {
             // MATCH_CONTINUE
             break;
           }
         } else if (!matchResult.isSkip()) {
           skip = false;
-          
+
           if (matched) {
             // MATCH_CONTINUE
             break;
           } else if (!allowDirs) {
-            // exact match is not required, so we lazily stop searching further 
+            // exact match is not required, so we lazily stop searching further
             // NO_MATCH_CONTINUE
             break;
           }
@@ -205,13 +203,13 @@ public final class ContextResourcePathMatchers {
           cacheBuilder.clear(index);
         }
       }
-      
+
       final DirectoryMatchResult result = DirectoryMatchResult.valueOf(matched, skip);
-      
+
       if (!skip) {
         cache.push(cacheBuilder.build());
       }
-      
+
       return result;
     }
 
@@ -238,7 +236,6 @@ public final class ContextResourcePathMatchers {
       return result;
     }
 
-    @NonNullByDefault(false)
     @Override
     public boolean equals(Object obj) {
       if (this == obj) {
@@ -266,11 +263,17 @@ public final class ContextResourcePathMatchers {
     @Override
     public String toString() {
       @SuppressWarnings("null")
-      @NonNull String result = new StringBuilder()
-          .append("CompositePathMatcher [matchers=").append(matchers)
-          .append(", allowDirs=").append(allowDirs)
-          .append(", allowFiles=").append(allowFiles)
-          .append("]").toString();
+      @NonNull
+      String result =
+          new StringBuilder()
+              .append("CompositePathMatcher [matchers=")
+              .append(matchers)
+              .append(", allowDirs=")
+              .append(allowDirs)
+              .append(", allowFiles=")
+              .append(allowFiles)
+              .append("]")
+              .toString();
       return result;
     }
   }
@@ -283,11 +286,6 @@ public final class ContextResourcePathMatchers {
     private final boolean allowDirs;
     private final boolean allowFiles;
     private final transient SimpleHistoryCache<FileSetCacheData> cache;
-
-    @SuppressWarnings("unchecked")
-    public static <T> FileSetPathMatcher<T> emptyInstance() {
-      return (FileSetPathMatcher<T>) EMPTY;
-    }
 
     private FileSetPathMatcher() {
       @SuppressWarnings("null")
@@ -302,23 +300,33 @@ public final class ContextResourcePathMatchers {
       this.cache = SimpleHistoryCache.emptyCache();
     }
 
-    public FileSetPathMatcher(final Collection<String> includes, final Collection<String> excludes, 
-        final T dir, final boolean allowDirs, final boolean allowFiles) {
+    public FileSetPathMatcher(
+        final Collection<String> includes,
+        final Collection<String> excludes,
+        final T dir,
+        final boolean allowDirs,
+        final boolean allowFiles) {
       this(includes, excludes, dir, allowDirs, allowFiles, Integer.MAX_VALUE);
     }
 
-    public FileSetPathMatcher(final Collection<String> includes, final Collection<String> excludes, 
-        final T dir, final boolean allowDirs, final boolean allowFiles, final int cacheSize) {
+    public FileSetPathMatcher(
+        final Collection<String> includes,
+        final Collection<String> excludes,
+        final T dir,
+        final boolean allowDirs,
+        final boolean allowFiles,
+        final int cacheSize) {
       verifyCondition((allowDirs || allowFiles), "allowDirs and allowFiles cannot be both false");
-      this.cache = new SimpleHistoryCache<FileSetCacheData>(verifyArgument(cacheSize > 0, cacheSize));
+      this.cache =
+          new SimpleHistoryCache<FileSetCacheData>(verifyArgument(cacheSize > 0, cacheSize));
       this.allowDirs = allowDirs;
       this.allowFiles = allowFiles;
       this.dir = verifyNonNull(dir);
-      @SuppressWarnings({ "unchecked", "null" })
+      @SuppressWarnings({"unchecked", "null"})
       final @NonNull Class<T> pathType = (Class<T>) dir.getClass();
       @SuppressWarnings("null")
       final @NonNull List<HierarchicalMatcher<T>> emptyList = Collections.emptyList();
-      
+
       if (verifyNonNull(includes).isEmpty()) {
         this.includes = emptyList;
       } else {
@@ -326,8 +334,9 @@ public final class ContextResourcePathMatchers {
             new ArrayList<HierarchicalMatcher<T>>(includes.size());
 
         for (String include : includes) {
-          includesList.add(ContextPathMatchers.getHierarchicalMatcher(verifyNonNull(include),
-              isUnix(), allowDirs, allowFiles, pathType));
+          includesList.add(
+              ContextPathMatchers.getHierarchicalMatcher(
+                  verifyNonNull(include), isUnix(), allowDirs, allowFiles, pathType));
         }
 
         this.includes = assertNonNull(Collections.unmodifiableList(includesList));
@@ -340,24 +349,30 @@ public final class ContextResourcePathMatchers {
             new ArrayList<HierarchicalMatcher<T>>(excludes.size());
 
         for (String exclude : excludes) {
-          excludesList.add(ContextPathMatchers.getHierarchicalMatcher(verifyNonNull(exclude),
-              isUnix(), allowDirs, allowFiles, pathType));
+          excludesList.add(
+              ContextPathMatchers.getHierarchicalMatcher(
+                  verifyNonNull(exclude), isUnix(), allowDirs, allowFiles, pathType));
         }
 
         this.excludes = assertNonNull(Collections.unmodifiableList(excludesList));
       }
     }
-    
+
+    @SuppressWarnings("unchecked")
+    public static <T> FileSetPathMatcher<T> emptyInstance() {
+      return (FileSetPathMatcher<T>) EMPTY;
+    }
+
+    public static <T, BType extends Builder<T, BType>> BType builder(final T dir) {
+      return new Builder<T, BType>(dir).self();
+    }
+
     private List<HierarchicalMatcher<T>> getIncludes() {
       return includes;
     }
 
     private List<HierarchicalMatcher<T>> getExcludes() {
       return excludes;
-    }
-    
-    public static <T, BType extends Builder<T, BType>> BType builder(final T dir) {
-      return new Builder<T, BType>(dir).self();
     }
 
     public <BType extends Builder<T, BType>> BType newBuilder() {
@@ -367,44 +382,53 @@ public final class ContextResourcePathMatchers {
     public <BType extends Builder<T, BType>> BType toBuilder() {
       return new Builder<T, BType>(this).self();
     }
-    
+
     @Override
     public String getPattern() {
       final StringBuilder sb = new StringBuilder("[filter:[");
-      
+
       if (includes.isEmpty()) {
         sb.append("]");
       } else {
         for (HierarchicalMatcher<T> include : includes) {
           sb.append(include.getPattern()).append(",");
         }
-        
+
         sb.setCharAt(sb.length() - 1, ']');
       }
-      
+
       sb.append(", excludes:[");
-      
+
       if (excludes.isEmpty()) {
         sb.append("]");
       } else {
         for (HierarchicalMatcher<T> exclude : excludes) {
           sb.append(exclude.getPattern()).append(",");
         }
-        
+
         sb.setCharAt(sb.length() - 1, ']');
       }
-      
+
       @SuppressWarnings("null")
       final @NonNull String result = sb.append("]").toString();
       return result;
     }
-    
+
     @Override
     public String toString() {
-      return "FileSetPathMatcher [filter=" + includes + ", excludes=" + excludes + ", dir=" + dir
-          + ", allowDirs=" + allowDirs + ", allowFiles=" + allowFiles + "]";
+      return "FileSetPathMatcher [filter="
+          + includes
+          + ", excludes="
+          + excludes
+          + ", dir="
+          + dir
+          + ", allowDirs="
+          + allowDirs
+          + ", allowFiles="
+          + allowFiles
+          + "]";
     }
-    
+
     @Override
     public int hashCode() {
       final int prime = 31;
@@ -418,7 +442,6 @@ public final class ContextResourcePathMatchers {
     }
 
     @Override
-    @NonNullByDefault(false)
     public boolean equals(Object obj) {
       if (this == obj) {
         return true;
@@ -432,7 +455,7 @@ public final class ContextResourcePathMatchers {
 
       try {
         final FileSetPathMatcher<?> other = (FileSetPathMatcher<?>) obj;
-        
+
         if (allowDirs != other.allowDirs) {
           return false;
         }
@@ -453,7 +476,7 @@ public final class ContextResourcePathMatchers {
         return false;
       }
     }
-    
+
     @Override
     public boolean isEmpty() {
       return (this == EMPTY) || includes.isEmpty();
@@ -474,7 +497,7 @@ public final class ContextResourcePathMatchers {
     protected SimpleHistoryCache<FileSetCacheData> getCache() {
       return cache;
     }
-    
+
     @Override
     public boolean matches(final T path, final PathContext<T> context) {
       if (!allowFiles) {
@@ -483,15 +506,16 @@ public final class ContextResourcePathMatchers {
 
       return matchesResolved(context.resolvePath(dir, path), context);
     }
-    
+
     @Override
-    public boolean matchesResolved(final @Nullable String sanitizedPath, final PathContext<T> context) {
+    public boolean matchesResolved(
+        final @Nullable String sanitizedPath, final PathContext<T> context) {
       if (!allowFiles) {
         return false;
       }
 
       cache.adjustCache(context.currentDepth());
-      
+
       boolean matched = false;
       final FileSetCacheData cacheData = getCacheData();
 
@@ -501,12 +525,12 @@ public final class ContextResourcePathMatchers {
 
       for (int index : cacheData.getIncludes()) {
         final HierarchicalMatcher<T> include = includes.get(index);
-        
+
         if (include.matchesResolved(sanitizedPath, context)) {
           matched = true;
           break;
         }
-      }  
+      }
 
       if (!matched) {
         return false;
@@ -515,14 +539,14 @@ public final class ContextResourcePathMatchers {
       if (cacheData.getExcludes().isEmpty()) {
         return true;
       }
-      
+
       for (int index : cacheData.getExcludes()) {
         final HierarchicalMatcher<T> exclude = includes.get(index);
-        
+
         if (exclude.matchesResolved(sanitizedPath, context)) {
           return false;
         }
-      }  
+      }
 
       return true;
     }
@@ -532,39 +556,41 @@ public final class ContextResourcePathMatchers {
       if (this == EMPTY) {
         return DirectoryMatchResult.NO_MATCH;
       }
-      
+
       if (context.resolvePath(path, dir) != null) {
         //this a parent of dir
         return DirectoryMatchResult.NO_MATCH_CONTINUE;
       }
-      
-      return matchesResolvedDirectory(context.resolvePath(dir, path), context.getSeparator(path), 
-          context);
+
+      return matchesResolvedDirectory(
+          context.resolvePath(dir, path), context.getSeparator(path), context);
     }
 
     @Override
-    public DirectoryMatchResult matchesResolvedDirectory(final @Nullable String sanitizedPath,
-                                                         final @Nullable String separator, final PathContext<T> context) {
+    public DirectoryMatchResult matchesResolvedDirectory(
+        final @Nullable String sanitizedPath,
+        final @Nullable String separator,
+        final PathContext<T> context) {
       if ((this == EMPTY) || (sanitizedPath == null) || (separator == null)) {
         return DirectoryMatchResult.NO_MATCH;
       }
-      
+
       cache.adjustCache(context.currentDepth());
-        
+
       /*      if (sanitizedPath.isEmpty()) {
         return DirectoryMatchResult.NO_MATCH_CONTINUE;
       }
        */
-      
+
       final FileSetCacheData cacheData = getCacheData();
       final FileSetCacheData.Builder cacheBuilder = cacheData.newBuilder();
 
       if (!cacheData.getExcludes().isEmpty()) {
         for (int index : cacheData.getExcludes()) {
           final HierarchicalMatcher<T> exclude = excludes.get(index);
-          final DirectoryMatchResult matchResult = exclude.matchesResolvedDirectory(sanitizedPath, 
-              separator, context);
-          
+          final DirectoryMatchResult matchResult =
+              exclude.matchesResolvedDirectory(sanitizedPath, separator, context);
+
           if (matchResult.isMatched()) {
             return DirectoryMatchResult.NO_MATCH;
           } else if (!matchResult.isSkip()) {
@@ -572,40 +598,40 @@ public final class ContextResourcePathMatchers {
           }
         }
       }
-      
+
       boolean skip = true;
       boolean matched = false;
       cacheBuilder.includesFrom(cacheData);
-      
+
       if (!cacheData.getIncludes().isEmpty()) {
         for (int index : cacheData.getIncludes()) {
           final HierarchicalMatcher<T> include = includes.get(index);
-          final DirectoryMatchResult matchResult = include.matchesResolvedDirectory(sanitizedPath, 
-              separator, context);
-          
+          final DirectoryMatchResult matchResult =
+              include.matchesResolvedDirectory(sanitizedPath, separator, context);
+
           if (matchResult.isMatched()) {
             matched = true;
-            
+
             if (!matchResult.isSkip()) {
               // MATCH_CONTINUE
               skip = false;
               break;
             }
-            
+
             cacheBuilder.clearInclude(index);
-            
+
             if (!skip) {
               // MATCH_CONTINUE
               break;
             }
           } else if (!matchResult.isSkip()) {
             skip = false;
-            
+
             if (matched) {
               // MATCH_CONTINUE
               break;
             } else if (!allowDirs) {
-              // exact match is not required, so we lazily stop searching further 
+              // exact match is not required, so we lazily stop searching further
               // NO_MATCH_CONTINUE
               break;
             }
@@ -615,14 +641,14 @@ public final class ContextResourcePathMatchers {
           }
         }
       }
-      
+
       final DirectoryMatchResult result = DirectoryMatchResult.valueOf(matched, skip);
-      
+
       // if (result != DirectoryMatchResult.NO_MATCH) {
       if (!skip) {
         cache.push(cacheBuilder.build());
       }
-      
+
       return result;
     }
 
@@ -633,7 +659,7 @@ public final class ContextResourcePathMatchers {
         return assertNonNull(cache.peek());
       }
     }
-    
+
     public static class Builder<T, BType extends Builder<T, BType>> {
       private final LinkedHashSet<String> includes;
       private final LinkedHashSet<String> excludes;
@@ -648,12 +674,12 @@ public final class ContextResourcePathMatchers {
         this.allowDirs = false;
         this.allowFiles = true;
       }
-      
+
       public Builder(final FileSetPathMatcher<T> original) {
         this(original.getDir());
         from(original);
       }
-      
+
       public Builder(final BType original) {
         this(original.dir());
         from(original);
@@ -675,7 +701,7 @@ public final class ContextResourcePathMatchers {
         this.allowFiles = original.isAllowFiles();
         return self();
       }
-      
+
       public BType from(final BType original) {
         verifyNonNull(original);
         this.includes.clear();
@@ -687,16 +713,17 @@ public final class ContextResourcePathMatchers {
         this.allowFiles = original.isAllowFiles();
         return self();
       }
-      
-      private LinkedHashSet<String> addAllMatchers(final LinkedHashSet<String> target, 
+
+      private LinkedHashSet<String> addAllMatchers(
+          final LinkedHashSet<String> target,
           final Iterable<? extends HierarchicalMatcher<? extends T>> source) {
         for (HierarchicalMatcher<? extends T> include : verifyNonNull(source)) {
           target.add(verifyNonNull(include).getPattern());
         }
-        
+
         return target;
       }
-      
+
       //TODO should this be replaced by addAllIncludesAndExcludes, as the rest is murky!
       @SuppressWarnings("unused")
       @Deprecated
@@ -709,13 +736,13 @@ public final class ContextResourcePathMatchers {
         this.allowFiles = this.allowFiles || other.isAllowFiles();
         return self();
       }
-      
+
       public BType addIncludesExcludesFrom(final FileSetPathMatcher<T> other) {
         addAllMatchers(this.includes, other.getIncludes());
         addAllMatchers(this.excludes, other.getExcludes());
         return self();
       }
-      
+
       @SuppressWarnings("null")
       public Set<String> includes() {
         return Collections.unmodifiableSet(includes);
@@ -723,19 +750,19 @@ public final class ContextResourcePathMatchers {
 
       @SuppressWarnings("null")
       public Set<String> excludes() {
-        return  Collections.unmodifiableSet(excludes);
+        return Collections.unmodifiableSet(excludes);
       }
 
       public BType clearExcludes() {
         excludes.clear();
         return self();
       }
-      
+
       public BType removeExclude(final String exclude) {
         excludes.remove(exclude);
         return self();
       }
-      
+
       public BType removeExcludes(final Collection<String> excludes) {
         this.excludes.removeAll(excludes);
         return self();
@@ -745,21 +772,21 @@ public final class ContextResourcePathMatchers {
         includes.clear();
         return self();
       }
-      
+
       public BType removeInclude(final String include) {
         includes.remove(include);
         return self();
       }
-      
+
       public BType removeIncludes(final Collection<String> includes) {
         this.includes.removeAll(includes);
         return self();
       }
-      
+
       public BType addExcludes(final Iterable<String> excludes) {
         return addAll(this.excludes, excludes);
       }
-      
+
       public BType addExclude(final String exclude) {
         this.excludes.add(verifyNonNull(exclude));
         return self();
@@ -768,25 +795,25 @@ public final class ContextResourcePathMatchers {
       public BType addIncludes(final Iterable<String> includes) {
         return addAll(this.includes, includes);
       }
-      
+
       public BType addInclude(final String include) {
         this.includes.add(verifyNonNull(include));
         return self();
       }
-      
+
       private BType addAll(final Collection<String> target, final Iterable<String> source) {
         for (String include : verifyNonNull(source)) {
           target.add(verifyNonNull(include));
         }
-        
+
         return self();
       }
-      
+
       public T dir() {
         return dir;
       }
 
-      @SuppressWarnings({ "unchecked", "null" })
+      @SuppressWarnings({"unchecked", "null"})
       protected T convertPath(String dir) {
         if (this.dir instanceof Path) {
           return (T) ((Path) this.dir).getFileSystem().getPath(dir);
@@ -798,7 +825,7 @@ public final class ContextResourcePathMatchers {
           throw new UnsupportedOperationException();
         }
       }
-      
+
       public BType dir(final String dir) {
         this.dir = convertPath(verifyNonNull(dir));
         return self();
@@ -808,7 +835,7 @@ public final class ContextResourcePathMatchers {
         this.dir = verifyNonNull(dir);
         return self();
       }
-      
+
       public boolean isAllowDirs() {
         return allowDirs;
       }
@@ -826,33 +853,38 @@ public final class ContextResourcePathMatchers {
         this.allowFiles = allowFiles;
         return self();
       }
-      
+
       public FileSetPathMatcher<T> build() {
         if (includes.isEmpty()) {
           @SuppressWarnings("unchecked")
           final FileSetPathMatcher<T> empty = (FileSetPathMatcher<T>) EMPTY;
           return empty;
         }
-        
-        final FileSetPathMatcher<T> result = new FileSetPathMatcher<T>(includes, excludes, 
-            verifyNonNull(dir), allowDirs, allowFiles);
+
+        final FileSetPathMatcher<T> result =
+            new FileSetPathMatcher<T>(
+                includes, excludes, verifyNonNull(dir), allowDirs, allowFiles);
         return result;
       }
     }
   }
-  
+
   protected static final class FileSetCacheData {
     private final IterableFilter includes;
     private final IterableFilter excludes;
-    
+
     private FileSetCacheData(IterableFilter includes, IterableFilter excludes) {
       this.includes = new IterableFilter(includes);
       this.excludes = new IterableFilter(excludes);
     }
-    
+
     private FileSetCacheData(BitSet includes, BitSet excludes) {
       this.includes = new IterableFilter(includes);
       this.excludes = new IterableFilter(excludes);
+    }
+
+    public static Builder builder() {
+      return new Builder();
     }
 
     public IterableFilter getIncludes() {
@@ -861,10 +893,6 @@ public final class ContextResourcePathMatchers {
 
     public IterableFilter getExcludes() {
       return excludes;
-    }
-    
-    public static Builder builder() {
-      return new Builder();
     }
 
     public Builder newBuilder() {
@@ -878,13 +906,18 @@ public final class ContextResourcePathMatchers {
     @Override
     public String toString() {
       @SuppressWarnings("null")
-      @NonNull String result = new StringBuilder()
-          .append("FileSetCacheData [includes=").append(includes)
-          .append(", excludes=").append(excludes)
-          .append("]").toString();
+      @NonNull
+      String result =
+          new StringBuilder()
+              .append("FileSetCacheData [includes=")
+              .append(includes)
+              .append(", excludes=")
+              .append(excludes)
+              .append("]")
+              .toString();
       return result;
     }
-    
+
     @Override
     public int hashCode() {
       final int prime = 31;
@@ -894,7 +927,6 @@ public final class ContextResourcePathMatchers {
       return result;
     }
 
-    @NonNullByDefault(false)
     @Override
     public boolean equals(Object obj) {
       if (this == obj) {
@@ -919,29 +951,29 @@ public final class ContextResourcePathMatchers {
     public static class Builder {
       private IterableFilter.Builder includes;
       private IterableFilter.Builder excludes;
-      
+
       private Builder() {
         this.includes = IterableFilter.builder();
         this.excludes = IterableFilter.builder();
       }
-      
+
       public Builder from(final Builder other) {
         this.includes = IterableFilter.builder().from(other.includes);
         this.excludes = IterableFilter.builder().from(other.excludes);
         return this;
       }
-      
+
       public Builder from(final FileSetCacheData other) {
         this.includes = IterableFilter.builder().from(other.includes);
         this.excludes = IterableFilter.builder().from(other.excludes);
         return this;
       }
-      
+
       public Builder includesFrom(final FileSetCacheData other) {
         this.includes = IterableFilter.builder().from(other.includes);
         return this;
       }
-      
+
       public Builder excludesFrom(final FileSetCacheData other) {
         this.excludes = IterableFilter.builder().from(other.excludes);
         return this;
@@ -951,7 +983,7 @@ public final class ContextResourcePathMatchers {
         excludes.set(index);
         return this;
       }
-      
+
       public Builder setInclude(final int index) {
         includes.set(index);
         return this;
@@ -961,37 +993,37 @@ public final class ContextResourcePathMatchers {
         includes.resetAll(values);
         return this;
       }
-      
+
       public Builder setAllExcludes(final Iterable<?> values) {
         excludes.resetAll(values);
         return this;
       }
-      
+
       public Builder setIncludes(final Iterable<?> values) {
         includes.reset(values);
         return this;
       }
-      
+
       public Builder setExcludes(final Iterable<?> values) {
         excludes.reset(values);
         return this;
       }
-      
+
       public Builder clearIncludes() {
         includes.clear();
         return this;
       }
-      
+
       public Builder clearExcludes() {
         excludes.clear();
         return this;
       }
-      
+
       public Builder clearExclude(final int index) {
         excludes.clear(index);
         return this;
       }
-      
+
       public Builder clearInclude(final int index) {
         includes.clear(index);
         return this;
@@ -1002,7 +1034,7 @@ public final class ContextResourcePathMatchers {
       }
     }
   }
-  
+
   protected static final class IterableFilter implements Iterable<Integer> {
     private final BitSet filter;
 
@@ -1013,16 +1045,16 @@ public final class ContextResourcePathMatchers {
     private IterableFilter(final BitSet filter) {
       this.filter = compactClone(verifyNonNull(filter));
     }
-    
+
     private IterableFilter(final IterableFilter other) {
       this.filter = compactClone(verifyNonNull(other.filter));
     }
-    
+
     @SuppressWarnings("null")
     protected static final BitSet compactClone(final BitSet original) {
       return BitSet.valueOf(original.toLongArray());
     }
-    
+
     public static Builder builder() {
       return new Builder();
     }
@@ -1038,11 +1070,11 @@ public final class ContextResourcePathMatchers {
     public int size() {
       return filter.length();
     }
-    
+
     public boolean isEmpty() {
       return filter.isEmpty();
     }
-    
+
     @Override
     public Iterator<Integer> iterator() {
       return new FilteredIterator(filter);
@@ -1051,10 +1083,12 @@ public final class ContextResourcePathMatchers {
     @Override
     public String toString() {
       @SuppressWarnings("null")
-      final @NonNull String result = new StringBuilder()
-          .append("IterableFilter [filter=").append(filter)
-          .append("]")
-          .toString();
+      final @NonNull String result =
+          new StringBuilder()
+              .append("IterableFilter [filter=")
+              .append(filter)
+              .append("]")
+              .toString();
       return result;
     }
 
@@ -1066,7 +1100,6 @@ public final class ContextResourcePathMatchers {
       return result;
     }
 
-    @NonNullByDefault(false)
     @Override
     public boolean equals(Object obj) {
       if (this == obj) {
@@ -1087,7 +1120,7 @@ public final class ContextResourcePathMatchers {
 
     public static class Builder {
       private BitSet filter;
-      
+
       private Builder() {
         this.filter = new BitSet();
       }
@@ -1096,12 +1129,12 @@ public final class ContextResourcePathMatchers {
         this.filter = compactClone(other.filter);
         return this;
       }
-      
+
       public Builder from(final IterableFilter other) {
         this.filter = compactClone(other.filter);
         return this;
       }
-      
+
       public Builder set(final int index) {
         filter.set(index);
         return this;
@@ -1111,7 +1144,7 @@ public final class ContextResourcePathMatchers {
         filter.set(0, size, value);
         return this;
       }
-      
+
       public Builder resetAll(final Iterable<?> values) {
         int size = 0;
 
@@ -1122,7 +1155,7 @@ public final class ContextResourcePathMatchers {
             size++;
           }
         }
-        
+
         return reset(size, true);
       }
 
@@ -1130,26 +1163,26 @@ public final class ContextResourcePathMatchers {
         if (values instanceof Collection) {
           final Collection<?> col = (Collection<?>) values;
           filter = new BitSet(col.size());
-          
+
           if (col.isEmpty()) {
             return this;
           }
         }
-        
+
         int i = 0;
-        
+
         for (Object value : values) {
           filter.set(i++, (value != null));
         }
-        
+
         return this;
       }
-      
+
       public Builder clear() {
         filter.clear();
         return this;
       }
-      
+
       public Builder clear(final int index) {
         filter.clear(index);
         return this;
@@ -1158,12 +1191,12 @@ public final class ContextResourcePathMatchers {
       public boolean isEmpty() {
         return filter.isEmpty();
       }
-      
+
       public IterableFilter build() {
         return new IterableFilter(filter);
       }
     }
-    
+
     private static final class FilteredIterator implements Iterator<Integer> {
       private final BitSet filter;
       private int current;
@@ -1183,7 +1216,7 @@ public final class ContextResourcePathMatchers {
         if (current < 0) {
           throw new NoSuchElementException();
         }
-        
+
         @SuppressWarnings("null")
         final @NonNull Integer result = Integer.valueOf(current);
         current = filter.nextSetBit(current + 1);

@@ -33,17 +33,21 @@
 
 package com.github.protobufel.common.files;
 
-
 public enum DirectoryMatchResult {
   NO_MATCH(0),
   NO_MATCH_CONTINUE(1),
   MATCH_SKIP(2),
   MATCH_CONTINUE(3);
-  
+
   private final int value;
-  
+
   private DirectoryMatchResult(int value) {
     this.value = value;
+  }
+
+  @SuppressWarnings("null")
+  public static DirectoryMatchResult valueOf(boolean matched, boolean skip) {
+    return values()[(matched ? 2 : 0) + (skip ? 0 : 1)];
   }
 
   public boolean isMatched() {
@@ -55,15 +59,10 @@ public enum DirectoryMatchResult {
   }
 
   @SuppressWarnings("null")
-  public static DirectoryMatchResult valueOf(boolean matched, boolean skip) {
-    return values()[(matched ? 2 : 0) + (skip ? 0 : 1)];
-  }
-
-  @SuppressWarnings("null")
   public DirectoryMatchResult or(DirectoryMatchResult other) {
     return values()[this.value | other.value];
   }
-  
+
   @SuppressWarnings("null")
   public DirectoryMatchResult and(DirectoryMatchResult other) {
     return values()[this.value & other.value];

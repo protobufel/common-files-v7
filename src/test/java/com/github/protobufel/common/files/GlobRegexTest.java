@@ -56,71 +56,75 @@ import java.util.regex.Pattern;
 
 import static com.github.protobufel.common.verifications.Verifications.assertNonNull;
 import static com.github.protobufel.common.verifications.Verifications.verifyCondition;
-import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.core.StringStartsWith.startsWith;
 import static org.junit.Assume.assumeThat;
 
 @RunWith(Theories.class)
 public class GlobRegexTest {
-  @SuppressWarnings({ "unused", "null" })
-  private static final Logger log = LoggerFactory.getLogger(GlobRegexTest.class);
-
   @DataPoints("globs")
-  public static final Object[] globs = new String[][] {
-      // "part1*/?part2?/*/part3{_1,_2,_3}/**/part4.extra/*.ext"
-      new String[] {"part1*/?part2?/*/part3{_1,_2,_3}/*/part4.extra/*.ext", "/part4.extra/1.ext1"}
-      }; 
-
+  public static final Object[] globs =
+      new String[][] {
+        // "part1*/?part2?/*/part3{_1,_2,_3}/**/part4.extra/*.ext"
+        new String[] {"part1*/?part2?/*/part3{_1,_2,_3}/*/part4.extra/*.ext", "/part4.extra/1.ext1"}
+      };
   @DataPoints("testPaths")
-  public static final String[] testPaths = new String[] {
-    //"part1Hello/Apart2Z/anything/part3_1/any1/any2/part4.extra/"
-    "part1Hello/Apart2Z/anything/part3_1/any1/part4.extra/"
-    };
-
-  @Rule
-  public TemporaryFolder temp = new TemporaryFolder();
+  public static final String[] testPaths =
+      new String[] {
+        //"part1Hello/Apart2Z/anything/part3_1/any1/any2/part4.extra/"
+        "part1Hello/Apart2Z/anything/part3_1/any1/part4.extra/"
+      };
+  @SuppressWarnings({"unused", "null"})
+  private static final Logger log = LoggerFactory.getLogger(GlobRegexTest.class);
+  @Rule public TemporaryFolder temp = new TemporaryFolder();
 
   @After
-  public void tearDown() throws Exception {
-  }
-  
+  public void tearDown() throws Exception {}
+
   @Test
   public void testConvertNormalizedRelativeRegexToWindows() throws Exception {
-    final String normalizedRelativeRegex = 
+    final String normalizedRelativeRegex =
         "[\\[/]/part1/part2[abc//de/]part3\\\\[123/45\\]67/]part4[\\Q]/[\\E]part5\\Q/[]/\\E";
-    final String expectedRegex = 
+    final String expectedRegex =
         "[\\[/]\\\\part1\\\\part2[abc//de/]part3\\\\[123/45\\]67/]part4[\\Q]/[\\E]part5\\Q/[]/\\E";
-    
+
     // make sure patterns are valid!
     @SuppressWarnings("unused")
     final Pattern normalizedRelativePattern = Pattern.compile(normalizedRelativeRegex);
     @SuppressWarnings("unused")
     final Pattern expectedPattern = Pattern.compile(expectedRegex);
-    
-    final String actualRegex = new SimpleHierarchicalMatcher<Path>(true, "", true, true)
-        .convertNormalizedRelativeRegexToWindows(normalizedRelativeRegex);
+
+    final String actualRegex =
+        new SimpleHierarchicalMatcher<Path>(true, "", true, true)
+            .convertNormalizedRelativeRegexToWindows(normalizedRelativeRegex);
     assertThat(actualRegex, equalTo(expectedRegex));
   }
 
   @Ignore
   @Theory(nullsAccepted = false)
-  public void parentDirsShouldMatchPartially(final @FromDataPoints("globs") String[] globData,
-      final @FromDataPoints("testPaths") String testString) throws IOException {
+  public void parentDirsShouldMatchPartially(
+      final @FromDataPoints("globs") String[] globData,
+      final @FromDataPoints("testPaths") String testString)
+      throws IOException {
     final Path testPath = Paths.get(testString);
-    final Path testDir = testPath.toString().endsWith("/") 
-        ? testPath.subpath(0, testPath.getNameCount() - 2) 
+    final Path testDir =
+        testPath.toString().endsWith("/")
+            ? testPath.subpath(0, testPath.getNameCount() - 2)
             : testPath;
     Files.createDirectories(temp.getRoot().toPath().resolve(testDir));
     verifyCondition(globData.length == 2);
     final String glob = assertNonNull(globData[0]);
     final String noMatchEnd = convertToSystemPath(assertNonNull(globData[1]));
     final boolean isUnix = "/".equals(testPath.getFileSystem().getSeparator());
-    final String regex = isUnix ? Globs.toUnixRegexPattern(glob) : Globs.toWindowsRegexPattern(glob);
+    final String regex =
+        isUnix ? Globs.toUnixRegexPattern(glob) : Globs.toWindowsRegexPattern(glob);
     final Pattern pattern = Pattern.compile(regex.substring(1, regex.length() - 1));
-    
+
     final Matcher matcher = pattern.matcher(testPath.toString());
     assertThat(matcher.matches(), is(false));
-    
+
     for (Path path = testDir; path != null; path = path.getParent()) {
       assumeThat(testPath.toString(), startsWith(path.toString()));
       matcher.reset(path.toString());
@@ -138,7 +142,7 @@ public class GlobRegexTest {
       assertThat(submatcher.hitEnd(), is(false));
     }
   }
-  
+
   @SuppressWarnings("null")
   private String convertToSystemPath(final String path) {
     return Utils.isUnix() ? path : path.replaceAll("/", "\\\\");

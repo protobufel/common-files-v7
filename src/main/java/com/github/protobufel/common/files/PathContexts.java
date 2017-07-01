@@ -42,56 +42,62 @@ import java.nio.file.Path;
 import static com.github.protobufel.common.verifications.Verifications.verifyNonNull;
 
 public class PathContexts {
-  private static final PathContext<Object> EMPTY_PATH_CONTEXT = new PathContext<Object>() {
-    @Override
-    public int currentDepth() {
-      return -1;
-    }
+  private static final PathContext<Object> EMPTY_PATH_CONTEXT =
+      new PathContext<Object>() {
+        @Override
+        public int currentDepth() {
+          return -1;
+        }
 
-    @Override
-    public boolean setCachedValue(Object key, Object value) {
-      return false;
-    }
+        @Override
+        public boolean setCachedValue(Object key, Object value) {
+          return false;
+        }
 
-    @Override
-    public @Nullable Object getCachedValue(Object key) {
-      return null;
-    }
+        @Override
+        public @Nullable Object getCachedValue(Object key) {
+          return null;
+        }
 
-    @Override
-    public @Nullable String resolvePath(Object basePath, Object path) {
-      return null;
-    }
+        @Override
+        public @Nullable String resolvePath(Object basePath, Object path) {
+          return null;
+        }
 
-    @Override
-    public @Nullable String resolvePath(Object path) {
-      return null;
-    }
+        @Override
+        public @Nullable String resolvePath(Object path) {
+          return null;
+        }
 
-    @Override
-    public @Nullable String getSeparator(Object path) {
-      return null;
-    }
-  };
-  
+        @Override
+        public @Nullable String getSeparator(Object path) {
+          return null;
+        }
+      };
+
   private PathContexts() {}
-  
-  public interface PathContext<T> extends IHistoryCacheView<Object, Object> {
-    @Nullable String resolvePath(T basePath, T path);
-    @Nullable String resolvePath(T path);
-    @Nullable String getSeparator(T path);
-    //void reportError(String message, String path);
-  }
 
   @SuppressWarnings("unchecked")
   public static <T> PathContext<T> emptyPathContext() {
     return (PathContext<T>) EMPTY_PATH_CONTEXT;
   }
-  
+
+  public interface PathContext<T> extends IHistoryCacheView<Object, Object> {
+    @Nullable
+    String resolvePath(T basePath, T path);
+
+    @Nullable
+    String resolvePath(T path);
+
+    @Nullable
+    String getSeparator(T path);
+    //void reportError(String message, String path);
+  }
+
   public static class BasePathContext<T> implements PathContext<T> {
     private final IHistoryCacheView<Object, Object> cache;
     private final @Nullable T root;
-    
+
     public BasePathContext(IHistoryCacheView<Object, Object> cache, @Nullable T root) {
       this.cache = verifyNonNull(cache);
       this.root = root;
@@ -104,7 +110,7 @@ public class PathContexts {
     @Override
     public @Nullable String resolvePath(T path) {
       final T root = this.root;
-      
+
       if (root != null) {
         return resolvePath(root, path);
       } else {
@@ -154,7 +160,7 @@ public class PathContexts {
     @Override
     public @Nullable String resolvePath(Path path) {
       final Path root = getRoot();
-      
+
       if (root != null) {
         return resolvePath(root, path);
       } else {

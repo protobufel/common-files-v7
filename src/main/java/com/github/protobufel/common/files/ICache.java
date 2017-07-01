@@ -37,5 +37,6 @@ import org.eclipse.jdt.annotation.Nullable;
 
 public interface ICache<K, V> {
   public boolean setCachedValue(K key, V value);
+
   public @Nullable V getCachedValue(K key);
 }

@@ -29,7 +29,10 @@ package com.github.protobufel.common.files;
 
 public interface ICacheable {
   void setCache(ICache<?, ?> cache);
+
   public void clear();
+
   public void pop();
+
   public void pop(int historySize);
 }

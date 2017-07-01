@@ -42,7 +42,6 @@ import com.github.protobufel.common.files.PathContexts.PathContext;
 import com.github.protobufel.common.files.PathContexts.SimplePathContext;
 import com.github.protobufel.common.files.resources.Resources.IFileSet;
 import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -55,12 +54,69 @@ import static com.github.protobufel.common.verifications.Verifications.*;
 public class PathVisitors {
 
   private PathVisitors() {}
-  
+
+  public static Iterable<Path> getResourceFiles(
+      final Path rootDir,
+      final IFileSet fileSet,
+      final boolean followLinks,
+      final boolean allowDuplicates,
+      final Logger log) {
+    return getResourceFiles(
+        rootDir, assertNonNull(Collections.singleton(fileSet)), followLinks, allowDuplicates, log);
+  }
+
+  public static Iterable<Path> getResourceFiles(
+      final Path rootDir,
+      final Iterable<? extends IFileSet> fileSets,
+      final boolean followLinks,
+      final boolean allowDuplicates,
+      final Logger log) {
+    final List<FileSetPathMatcher<Path>> matchers = new ArrayList<>();
+
+    for (IFileSet fileSet : verifyNonNull(fileSets)) {
+      @SuppressWarnings("null")
+      final @NonNull Path dir = Paths.get(verifyNonNull(fileSet).getDirectory());
+      final FileSetPathMatcher<Path> matcher =
+          new FileSetPathMatcher<Path>(
+              fileSet.getIncludes(),
+              fileSet.getExcludes(),
+              dir,
+              fileSet.isAllowDirs(),
+              fileSet.isAllowFiles());
+      matchers.add(matcher);
+    }
+
+    final CompositePathMatcher<Path, FileSetPathMatcher<Path>> matcher =
+        new CompositePathMatcher<>(matchers);
+    final Set<Path> result = new LinkedHashSet<>();
+
+    try {
+      final EnumSet<FileVisitOption> options =
+          followLinks
+              ? EnumSet.of(FileVisitOption.FOLLOW_LINKS)
+              : EnumSet.noneOf(FileVisitOption.class);
+      final ResourceVisitor<Path> resourceVisitor =
+          new ResourceVisitor<>(matcher, allowDuplicates, result, log, rootDir);
+      Files.walkFileTree(rootDir, options, Integer.MAX_VALUE, resourceVisitor);
+
+      if (!resourceVisitor.getErrorMessage().isEmpty()) {
+        throw new ResourceFileException(resourceVisitor.getErrorMessage());
+      }
+
+      @SuppressWarnings("null")
+      final @NonNull Set<Path> unmodifiableSet = Collections.unmodifiableSet(result);
+      return unmodifiableSet;
+    } catch (Exception e) {
+      log.error("fileSet caused error", e);
+      throw new ResourceFileException("fileSet caused error", e);
+    }
+  }
+
   public static class ResourceFileException extends RuntimeException {
     private static final long serialVersionUID = 4984405890116628621L;
 
-    private ResourceFileException(String message, Throwable cause, boolean enableSuppression,
-        boolean writableStackTrace) {
+    private ResourceFileException(
+        String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
       super(message, cause, enableSuppression, writableStackTrace);
     }
 
@@ -76,50 +132,6 @@ public class PathVisitors {
       super(cause);
     }
   }
-  
-  public static Iterable<Path> getResourceFiles(final Path rootDir, 
-      final IFileSet fileSet, final boolean followLinks, final boolean allowDuplicates, 
-      final Logger log) {
-    return getResourceFiles(rootDir, assertNonNull(Collections.singleton(fileSet)), followLinks, 
-        allowDuplicates, log);
-  }
-
-  public static Iterable<Path> getResourceFiles(final Path rootDir, 
-      final Iterable<? extends IFileSet> fileSets, final boolean followLinks, 
-      final boolean allowDuplicates, final Logger log) {
-    final List<FileSetPathMatcher<Path>> matchers = new ArrayList<>(); 
-    
-    for (IFileSet fileSet : verifyNonNull(fileSets)) {
-      @SuppressWarnings("null")
-      final @NonNull Path dir = Paths.get(verifyNonNull(fileSet).getDirectory());
-      final FileSetPathMatcher<Path> matcher = new FileSetPathMatcher<Path>(fileSet.getIncludes(),
-          fileSet.getExcludes(), dir, fileSet.isAllowDirs(), fileSet.isAllowFiles());
-      matchers.add(matcher);
-    }
-
-    final CompositePathMatcher<Path, FileSetPathMatcher<Path>> matcher = new CompositePathMatcher<>(matchers);
-    final Set<Path> result = new LinkedHashSet<>();
-
-    try {
-      final EnumSet<FileVisitOption> options = followLinks 
-          ? EnumSet.of(FileVisitOption.FOLLOW_LINKS) 
-              : EnumSet.noneOf(FileVisitOption.class);
-      final ResourceVisitor<Path> resourceVisitor = new ResourceVisitor<>(matcher, allowDuplicates, 
-          result, log, rootDir);
-      Files.walkFileTree(rootDir, options, Integer.MAX_VALUE, resourceVisitor);
-      
-      if (!resourceVisitor.getErrorMessage().isEmpty()) {
-        throw new ResourceFileException(resourceVisitor.getErrorMessage());
-      }
-      
-      @SuppressWarnings("null")
-      final @NonNull Set<Path> unmodifiableSet = Collections.unmodifiableSet(result);
-      return unmodifiableSet;
-    } catch (Exception e) {
-      log.error("fileSet caused error", e);
-      throw new ResourceFileException("fileSet caused error", e);
-    }
-  }
 
   public static final class ResourceVisitor<T> extends SimpleFileVisitor<T> {
     private static final int MATCHER_CACHE_SIZE = 1024;
@@ -127,19 +139,28 @@ public class PathVisitors {
     private final ContextHierarchicalMatcher<T> matcher;
     private final boolean allowDuplicates;
     private final Set<T> result;
-    private String errorMessage;
     private final Logger log;
-    private boolean skipRoot = true;
     private final IHistoryCache<Object, Object> matcherCache;
     private final PathContext<T> pathContext;
+    private String errorMessage;
+    private boolean skipRoot = true;
 
-    public ResourceVisitor(final ContextHierarchicalMatcher<T> matcher, final boolean allowDuplicates,
-                           final Set<T> result, final Logger log, T rootDir) {
+    public ResourceVisitor(
+        final ContextHierarchicalMatcher<T> matcher,
+        final boolean allowDuplicates,
+        final Set<T> result,
+        final Logger log,
+        T rootDir) {
       this(matcher, allowDuplicates, result, log, MATCHER_CACHE_SIZE, rootDir);
     }
 
-    public ResourceVisitor(final ContextHierarchicalMatcher<T> matcher, final boolean allowDuplicates,
-                           final Set<T> result, final Logger log, final int maxCacheSize, final T rootDir) {
+    public ResourceVisitor(
+        final ContextHierarchicalMatcher<T> matcher,
+        final boolean allowDuplicates,
+        final Set<T> result,
+        final Logger log,
+        final int maxCacheSize,
+        final T rootDir) {
       this.matcher = verifyNonNull(matcher);
       this.matcherCache = getHistoryCache(matcher, maxCacheSize);
       this.result = verifyNonNull(result);
@@ -148,18 +169,7 @@ public class PathVisitors {
       this.errorMessage = "";
       this.pathContext = getPathContext(verifyNonNull(rootDir));
     }
-    
-    protected PathContext<T> getPathContext(T root) {
-      if (root instanceof Path) {
-        @SuppressWarnings("unchecked")
-        final PathContext<T> pathContext = (PathContext<T>) new SimplePathContext(
-            matcherCache.getCacheView(), (Path) root);
-        return pathContext;
-      }
-      
-      return new BasePathContext<T>(matcherCache.getCacheView(), root);
-    }
-    
+
     static boolean isUseEmptyCache() {
       // for testing only
       return useEmptyCache;
@@ -170,67 +180,75 @@ public class PathVisitors {
       ResourceVisitor.useEmptyCache = useEmptyCache;
     }
 
+    protected PathContext<T> getPathContext(T root) {
+      if (root instanceof Path) {
+        @SuppressWarnings("unchecked")
+        final PathContext<T> pathContext =
+            (PathContext<T>) new SimplePathContext(matcherCache.getCacheView(), (Path) root);
+        return pathContext;
+      }
+
+      return new BasePathContext<T>(matcherCache.getCacheView(), root);
+    }
+
     private IHistoryCache<Object, Object> getHistoryCache(
-            final ContextHierarchicalMatcher<T> matcher, final int maxCacheSize) {
+        final ContextHierarchicalMatcher<T> matcher, final int maxCacheSize) {
       final IHistoryCache<Object, Object> matcherCache;
-      
+
       if (isUseEmptyCache()) {
         matcherCache = HistoryCaches.fakeInstance();
       } else {
         matcherCache = new HistoryCache<>(verifyArgument(maxCacheSize > 0, maxCacheSize));
       }
-      
+
       return matcherCache;
     }
 
     @Override
-    @NonNullByDefault(false)
-    public FileVisitResult preVisitDirectory(T dir, BasicFileAttributes attrs)
-        throws IOException {
+    public FileVisitResult preVisitDirectory(T dir, BasicFileAttributes attrs) throws IOException {
       super.preVisitDirectory(dir, attrs); // dir, attrs are checked for nonNull!
       @SuppressWarnings("null")
       final @NonNull T nonNullDir = dir;
       //TODO either use or remove!
-      @SuppressWarnings({ "unused", "null" })
+      @SuppressWarnings({"unused", "null"})
       final @NonNull BasicFileAttributes nonNullAttrs = attrs;
-      
+
       if (skipRoot) {
         skipRoot = false;
         return FileVisitResult.CONTINUE;
-      } 
-      
+      }
+
       matcherCache.push();
       final DirectoryMatchResult matcherResult = matcher.matchesDirectory(nonNullDir, pathContext);
-      
+
       if (matcherResult.isMatched()) {
         if (!result.add(nonNullDir) && !allowDuplicates) {
           @SuppressWarnings("null")
-          @NonNull String nonNullErrorMsg = String.format("found a duplicate folder %s", nonNullDir);
+          @NonNull
+          String nonNullErrorMsg = String.format("found a duplicate folder %s", nonNullDir);
           errorMessage = nonNullErrorMsg;
           log.error(errorMessage);
           matcherCache.clear();
           return FileVisitResult.TERMINATE;
         }
       }
-      
+
       if (matcherResult.isSkip()) {
         matcherCache.pop();
         return FileVisitResult.SKIP_SUBTREE;
       } else {
         return FileVisitResult.CONTINUE;
-      }  
+      }
     }
 
     @Override
-    @NonNullByDefault(false)
     public FileVisitResult postVisitDirectory(T dir, IOException exc) throws IOException {
       super.postVisitDirectory(dir, exc);
       matcherCache.pop();
       return FileVisitResult.CONTINUE;
     }
-    
+
     @Override
-    @NonNullByDefault(false)
     public FileVisitResult visitFile(T file, BasicFileAttributes attrs) throws IOException {
       super.visitFile(file, attrs);
       @SuppressWarnings("null")
@@ -239,8 +257,8 @@ public class PathVisitors {
       if (matcher.matches(nonNullFile, pathContext)) {
         if (!result.add(nonNullFile) && !allowDuplicates) {
           @SuppressWarnings("null")
-          final @NonNull String nonNullErrorMsg = String.format("found a duplicate file %s",
-              nonNullFile);
+          final @NonNull String nonNullErrorMsg =
+              String.format("found a duplicate file %s", nonNullFile);
           errorMessage = nonNullErrorMsg;
           log.error(errorMessage);
           matcherCache.clear();
@@ -252,12 +270,11 @@ public class PathVisitors {
     }
 
     @Override
-    @NonNullByDefault(false)
     public FileVisitResult visitFileFailed(T file, IOException exc) throws IOException {
       log.error(String.format("file %s cannot be visited", verifyNonNull(file)), exc);
       throw exc;
     }
-    
+
     public String getErrorMessage() {
       return errorMessage;
     }
